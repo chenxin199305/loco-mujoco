@@ -6,7 +6,7 @@ name = "loco-mujoco"
 dependencies = [
     "numpy<2.0",
     "scipy>=1.14.0",
-    "mujoco==3.2.7",    # todo: MjSpec API changed in 3.3.0, check why find functions are not supported anymore (no info in Mujoco changelog given)
+    "mujoco==3.2.7", # todo: MjSpec API changed in 3.3.0, check why find functions are not supported anymore (no info in Mujoco changelog given)
     "mujoco-mjx==3.2.7",
     "hydra-core",
     "jax",
@@ -20,14 +20,15 @@ dependencies = [
     "wget",
     "gitpython",
     "datasets",
-    "huggingface_hub"]
+    "huggingface_hub",
+]
 
 requires-python = ">=3.10"
-authors = [{name="Firas Al-Hafez", email="fi.alhafez@gmail.com"}]
-maintainers = [{ name="Firas Al-Hafez", email="fi.alhafez@gmail.com"}]
+authors = [{ name = "Firas Al-Hafez", email = "fi.alhafez@gmail.com" }]
+maintainers = [{ name = "Firas Al-Hafez", email = "fi.alhafez@gmail.com" }]
 description = 'Imitation learning benchmark focusing on complex locomotion tasks using MuJoCo.'
 readme = "README.md"
-license = { file= "LICENSE" }
+license = { file = "LICENSE" }
 keywords = ["Imitation Learning", "Reinforcement Learning", "Locomotion"]
 classifiers = [
     "Programming Language :: Python :: 3",
