@@ -60,7 +60,6 @@ class PPOAgentState(AgentStateBase):
 
 
 class PPOJax(JaxRLAlgorithmBase):
-
     _agent_conf = PPOAgentConf
     _agent_state = PPOAgentState
 
@@ -90,9 +89,9 @@ class PPOJax(JaxRLAlgorithmBase):
             critic_obs_ind = jnp.arange(env.mdp_info.observation_space.shape[0])
         if hasattr(config.experiment, "len_obs_history") and config.experiment.len_obs_history > 1:
             obs_len = env.info.observation_space.shape[0]
-            actor_obs_ind = jnp.concatenate([actor_obs_ind + i*obs_len
+            actor_obs_ind = jnp.concatenate([actor_obs_ind + i * obs_len
                                              for i in range(config.experiment.len_obs_history)])
-            critic_obs_ind = jnp.concatenate([critic_obs_ind + i*obs_len
+            critic_obs_ind = jnp.concatenate([critic_obs_ind + i * obs_len
                                               for i in range(config.experiment.len_obs_history)])
         network = ActorCritic(
             env.info.action_space.shape[0],
@@ -130,13 +129,15 @@ class PPOJax(JaxRLAlgorithmBase):
         return tx
 
     @classmethod
-    def _train_fn(cls, rng, env,
+    def _train_fn(cls,
+                  rng,
+                  env,
                   agent_conf: PPOAgentConf,
                   agent_state: PPOAgentState = None,
                   mh: MetricsHandler = None):
 
         # extract static agent info
-        config, network, tx =\
+        config, network, tx = \
             (agent_conf.config.experiment, agent_conf.network, agent_conf.tx)
 
         env = cls._wrap_env(env, config)
@@ -180,10 +181,10 @@ class PPOJax(JaxRLAlgorithmBase):
                 # SELECT ACTION
                 rng, _rng = jax.random.split(rng)
                 y, updates = network.apply({'params': train_state.params,
-                                                  'run_stats': train_state.run_stats},
-                                                 last_obs, mutable=["run_stats"])
+                                            'run_stats': train_state.run_stats},
+                                           last_obs, mutable=["run_stats"])
                 pi, value = y
-                train_state = train_state.replace(run_stats=updates['run_stats'])   # update stats
+                train_state = train_state.replace(run_stats=updates['run_stats'])  # update stats
                 action = pi.sample(seed=_rng)
                 log_prob = pi.log_prob(action)
 
@@ -208,8 +209,8 @@ class PPOJax(JaxRLAlgorithmBase):
             # CALCULATE ADVANTAGE
             train_state, env_state, last_obs, train_state_buffer, rng = runner_state
             y, _ = network.apply({'params': train_state.params,
-                                              'run_stats': train_state.run_stats},
-                                             last_obs, mutable=["run_stats"])
+                                  'run_stats': train_state.run_stats},
+                                 last_obs, mutable=["run_stats"])
             pi, last_val = y
 
             def _calculate_gae(traj_batch, last_val):
@@ -225,8 +226,8 @@ class PPOJax(JaxRLAlgorithmBase):
 
                     delta = reward + config.gamma * next_value * (1 - absorbing) - value
                     gae = (
-                        delta
-                        + config.gamma * config.gae_lambda * (1 - done) * gae
+                            delta
+                            + config.gamma * config.gae_lambda * (1 - done) * gae
                     )
                     return (gae, value), gae
 
@@ -255,12 +256,12 @@ class PPOJax(JaxRLAlgorithmBase):
 
                         # CALCULATE VALUE LOSS
                         value_pred_clipped = traj_batch.value + (
-                            value - traj_batch.value
+                                value - traj_batch.value
                         ).clip(-config.clip_eps, config.clip_eps)
                         value_losses = jnp.square(value - targets)
                         value_losses_clipped = jnp.square(value_pred_clipped - targets)
                         value_loss = (
-                            0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
+                                0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
                         )
 
                         # CALCULATE PPO ACTOR LOSS
@@ -280,9 +281,9 @@ class PPOJax(JaxRLAlgorithmBase):
                         entropy = pi.entropy().mean()
 
                         total_loss = (
-                            loss_actor
-                            + config.vf_coef * value_loss
-                            - config.ent_coef * entropy
+                                loss_actor
+                                + config.vf_coef * value_loss
+                                - config.ent_coef * entropy
                         )
                         return total_loss, (value_loss, loss_actor, entropy)
 
@@ -297,7 +298,7 @@ class PPOJax(JaxRLAlgorithmBase):
                 rng, _rng = jax.random.split(rng)
                 batch_size = config.minibatch_size * config.num_minibatches
                 assert (
-                    batch_size == config.num_steps * config.num_envs
+                        batch_size == config.num_steps * config.num_envs
                 ), "batch size must be equal to number of steps * number of envs"
                 permutation = jax.random.permutation(_rng, batch_size)
                 batch = (traj_batch, advantages, targets)
@@ -382,7 +383,7 @@ class PPOJax(JaxRLAlgorithmBase):
                 validation_metrics = ValidationSummary()
             else:
                 validation_metrics = jax.lax.cond(counter % config.validation_interval == 0, _evaluation_step,
-                                                   mh.get_zero_container)
+                                                  mh.get_zero_container)
 
             if config.debug:
                 def callback(metrics):

@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import jax
 import jax.numpy as jnp
 import wandb
@@ -17,9 +18,9 @@ import traceback
 @hydra.main(version_base=None, config_path="./", config_name="conf")
 def experiment(config: DictConfig):
     try:
-
         os.environ['XLA_FLAGS'] = (
-            '--xla_gpu_triton_gemm_any=True ')
+            '--xla_gpu_triton_gemm_any=True '
+        )
 
         # Accessing the current sweep number
         result_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
@@ -45,7 +46,7 @@ def experiment(config: DictConfig):
         train_fn = jax.jit(jax.vmap(train_fn)) if config.experiment.n_seeds > 1 else jax.jit(train_fn)
 
         # get rng keys and run training
-        rngs = [jax.random.PRNGKey(i) for i in range(config.experiment.n_seeds+1)]  # create rngs from seed
+        rngs = [jax.random.PRNGKey(i) for i in range(config.experiment.n_seeds + 1)]  # create rngs from seed
         rng, _rng = rngs[0], jnp.squeeze(jnp.vstack(rngs[1:]))
         out = train_fn(_rng)
 
@@ -56,6 +57,7 @@ def experiment(config: DictConfig):
 
         import time
         t_start = time.time()
+
         # get the metrics and log them
         if not config.experiment.debug:
             training_metrics = out["training_metrics"]
@@ -66,14 +68,22 @@ def experiment(config: DictConfig):
             validation_metrics = jax.tree.map(lambda x: jnp.mean(jnp.atleast_2d(x), axis=0), validation_metrics)
 
             for i in range(len(training_metrics.mean_episode_return)):
-                run.log({"Mean Episode Return": training_metrics.mean_episode_return[i],
-                         "Mean Episode Length": training_metrics.mean_episode_length[i]},
-                        step=int(training_metrics.max_timestep[i]))
+                run.log(
+                    {
+                        "Mean Episode Return": training_metrics.mean_episode_return[i],
+                        "Mean Episode Length": training_metrics.mean_episode_length[i]
+                    },
+                    step=int(training_metrics.max_timestep[i])
+                )
 
-                if (i+1) % config.experiment.validation_interval == 0 and config.experiment.validation.active:
-                    run.log({"Validation Info/Mean Episode Return": validation_metrics.mean_episode_return[i],
-                             "Validation Info/Mean Episode Length": validation_metrics.mean_episode_length[i]},
-                            step=int(training_metrics.max_timestep[i]))
+                if (i + 1) % config.experiment.validation_interval == 0 and config.experiment.validation.active:
+                    run.log(
+                        {
+                            "Validation Info/Mean Episode Return": validation_metrics.mean_episode_return[i],
+                            "Validation Info/Mean Episode Length": validation_metrics.mean_episode_length[i]
+                        },
+                        step=int(training_metrics.max_timestep[i])
+                    )
 
                     # log all measures
                     metrics_to_log = {}
@@ -93,16 +103,23 @@ def experiment(config: DictConfig):
                     site_rpos = validation_metrics.euclidean_distance.site_rpos[i]
                     site_rrotvec = validation_metrics.euclidean_distance.site_rpos[i]
                     site_rvel = validation_metrics.euclidean_distance.site_rpos[i]
-                    run.log({"Metric for Sweep": site_rpos + site_rrotvec + site_rvel},
-                            step=int(training_metrics.max_timestep[i]))
+                    run.log(
+                        {
+                            "Metric for Sweep": site_rpos + site_rrotvec + site_rvel
+                        },
+                        step=int(training_metrics.max_timestep[i])
+                    )
 
         print(f"Time taken to log metrics: {time.time() - t_start}s")
 
         # run the environment with the trained agent to record video
-        PPOJax.play_policy(env, agent_conf, agent_state, deterministic=True, n_steps=200, n_envs=20, record=True,
-                           train_state_seed=0)
+        PPOJax.play_policy(env, agent_conf, agent_state, deterministic=True, n_steps=200, n_envs=20, record=True, train_state_seed=0)
         video_file = env.video_file_path
-        run.log({"Agent Video": wandb.Video(video_file)})
+        run.log(
+            {
+                "Agent Video": wandb.Video(video_file)
+            }
+        )
 
         wandb.finish()
 

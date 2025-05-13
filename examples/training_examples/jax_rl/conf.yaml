@@ -1,4 +1,4 @@
-efaults:
+defaults:
   - override hydra/job_logging: default
   - override hydra/launcher: basic
 
@@ -22,7 +22,7 @@ wandb:
 experiment:
   task_factory:
     name: RLFactory
-    params: {}
+    params: { }
   env_params:
     env_name: MjxUnitreeGo2
     horizon: 1000
@@ -45,7 +45,7 @@ experiment:
       action_rate_coeff: 0.1
       symmetry_air_coeff: 0.005
       energy_coeff: 5.0e-05
-  hidden_layers: [512, 256]
+  hidden_layers: [ 512, 256 ]
   lr: 1e-4
   num_envs: 2048
   num_steps: 50

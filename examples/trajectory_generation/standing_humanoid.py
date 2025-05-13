@@ -6,7 +6,6 @@ import mujoco
 from loco_mujoco import LocoEnv
 from loco_mujoco.trajectory import Trajectory, TrajectoryInfo, TrajectoryModel, TrajectoryData
 
-
 """
 This is a minimal example explaining the trajectory interface.
 Here a standing still trajectory is created and replayed in the Unitree H1 environment
@@ -44,7 +43,7 @@ qvel = np.tile(qvel, (N_steps, 1))
 njnt = model.njnt
 jnt_type = model.jnt_type
 jnt_names = [mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, i) for i in range(njnt)]
-traj_info = TrajectoryInfo(jnt_names, model=TrajectoryModel(njnt, jnp.array(jnt_type)), frequency=1/env.dt)
+traj_info = TrajectoryInfo(jnt_names, model=TrajectoryModel(njnt, jnp.array(jnt_type)), frequency=1 / env.dt)
 
 # create a trajectory data -- this stores the actual trajectory data
 traj_data = TrajectoryData(jnp.array(qpos), jnp.array(qvel), split_points=jnp.array([0, N_steps]))
@@ -63,6 +62,3 @@ env.load_trajectory(traj)
 
 # replay the trajectory
 env.play_trajectory(n_steps_per_episode=N_steps)
-
-
-

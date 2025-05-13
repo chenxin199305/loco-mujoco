@@ -15,8 +15,7 @@ import jax.numpy as jnp
 
 from loco_mujoco.core.utils import Box, MDPInfo, info_property
 from loco_mujoco.core.reward.base import Reward
-from loco_mujoco.core.observations import (Observation, ObservationType, Goal,
-                                           ObservationIndexContainer, ObservationContainer)
+from loco_mujoco.core.observations import Observation, ObservationType, Goal, ObservationIndexContainer, ObservationContainer
 from loco_mujoco.core.control_functions import ControlFunction
 from loco_mujoco.core.domain_randomizer import DomainRandomizer
 from loco_mujoco.core.terrain import Terrain
@@ -208,9 +207,10 @@ class Mujoco:
         key, subkey = jax.random.split(key)
         mujoco.mj_resetData(self._model, self._data)
         mujoco.mj_forward(self._model, self._data)
+
         # todo: replace all cur_step_in_episode to use additional info!
         self._additional_carry = self._init_additional_carry(key, self._model, self._data, np)
-        self._data, self._additional_carry =\
+        self._data, self._additional_carry = \
             self._reset_carry(self._model, self._data, self._additional_carry)
 
         # reset all stateful entities
@@ -245,7 +245,6 @@ class Mujoco:
         self._model, self._data, carry = self._simulation_pre_step(self._model, self._data, carry)
 
         for i in range(self._n_intermediate_steps):
-
             # compute the action at every intermediate step
             ctrl_action, carry = self._compute_action(processed_action, self._model, self._data, carry)
 
@@ -381,7 +380,8 @@ class Mujoco:
         done = absorbing or (self._cur_step_in_episode >= self.info.horizon)
         return done
 
-    def _reset_carry(self, model: MjModel,
+    def _reset_carry(self,
+                     model: MjModel,
                      data: MjData,
                      carry: AdditionalCarry) -> Tuple[MjData, AdditionalCarry]:
         """
@@ -404,7 +404,8 @@ class Mujoco:
 
         return data, carry
 
-    def _step_finalize(self, obs: np.ndarray,
+    def _step_finalize(self,
+                       obs: np.ndarray,
                        model: MjModel,
                        data: MjData,
                        info: Dict,
@@ -428,7 +429,8 @@ class Mujoco:
 
         return obs, data, info, carry
 
-    def _reset_info_dictionary(self, obs: np.ndarray,
+    def _reset_info_dictionary(self,
+                               obs: np.ndarray,
                                data: MjData,
                                key: jax.Array) -> Dict:
         """
@@ -445,7 +447,8 @@ class Mujoco:
         """
         return {}
 
-    def _update_info_dictionary(self, info: Dict,
+    def _update_info_dictionary(self,
+                                info: Dict,
                                 obs: np.ndarray,
                                 data: MjData,
                                 carry: AdditionalCarry) -> Dict:
@@ -464,7 +467,8 @@ class Mujoco:
         """
         return info
 
-    def _preprocess_action(self, action: np.ndarray,
+    def _preprocess_action(self,
+                           action: np.ndarray,
                            model: MjModel,
                            data: MjData,
                            carry: AdditionalCarry) -> Tuple[np.ndarray, AdditionalCarry]:
@@ -486,7 +490,8 @@ class Mujoco:
         action, carry = self._domain_randomizer.update_action(self, action, model, data, carry, np)
         return action, carry
 
-    def _compute_action(self, action: np.ndarray,
+    def _compute_action(self,
+                        action: np.ndarray,
                         model: MjModel,
                         data: MjData,
                         carry: AdditionalCarry) -> Tuple[np.ndarray, AdditionalCarry]:
@@ -574,7 +579,7 @@ class Mujoco:
 
     def _setup_observations(self, observation_spec: List[ObservationType],
                             model: MjModel,
-                            data: MjData)\
+                            data: MjData) \
             -> Tuple[ObservationContainer, ObservationIndexContainer, ObservationIndexContainer]:
         """
         Sets up the observation space for the environment. It generates a dictionary containing all the observation
@@ -1352,4 +1357,3 @@ class Mujoco:
             return env.generate(*args, **kwargs)
         else:
             return env(*args, **kwargs)
-
