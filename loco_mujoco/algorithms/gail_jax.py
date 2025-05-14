@@ -50,7 +50,7 @@ class GAILAgentConf(AgentConfBase):
         _all = {"config": OmegaConf.to_container(self.config, resolve=True, throw_on_missing=True),
                 "network": flax.serialization.to_state_dict(self.network),
                 "discriminator": flax.serialization.to_state_dict(self.discriminator),
-                "expert_dataset": None} # never save dataset
+                "expert_dataset": None}  # never save dataset
         return _all
 
     @classmethod
@@ -83,7 +83,6 @@ class GAILAgentState(AgentStateBase):
 
 
 class GAILJax(JaxRLAlgorithmBase):
-
     _agent_conf = GAILAgentConf
     _agent_state = GAILAgentState
 
@@ -113,9 +112,9 @@ class GAILJax(JaxRLAlgorithmBase):
             critic_obs_ind = jnp.arange(env.mdp_info.observation_space.shape[0])
         if hasattr(config.experiment, "len_obs_history") and config.experiment.len_obs_history > 1:
             obs_len = env.info.observation_space.shape[0]
-            actor_obs_ind = jnp.concatenate([actor_obs_ind + i*obs_len
+            actor_obs_ind = jnp.concatenate([actor_obs_ind + i * obs_len
                                              for i in range(config.experiment.len_obs_history)])
-            critic_obs_ind = jnp.concatenate([critic_obs_ind + i*obs_len
+            critic_obs_ind = jnp.concatenate([critic_obs_ind + i * obs_len
                                               for i in range(config.experiment.len_obs_history)])
         network = ActorCritic(
             env.info.action_space.shape[0],
@@ -162,13 +161,15 @@ class GAILJax(JaxRLAlgorithmBase):
         return tx, disc_tx
 
     @classmethod
-    def _train_fn(cls, rng, env,
+    def _train_fn(cls,
+                  rng,
+                  env,
                   agent_conf: GAILAgentConf,
                   agent_state: GAILAgentState = None,
                   mh: MetricsHandler = None):
 
         # extract static agent info
-        config, network, discriminator, tx, disc_tx, expert_dataset =\
+        config, network, discriminator, tx, disc_tx, expert_dataset = \
             (agent_conf.config.experiment, agent_conf.network,
              agent_conf.discriminator, agent_conf.tx, agent_conf.disc_tx, agent_conf.expert_dataset)
 
@@ -221,10 +222,10 @@ class GAILJax(JaxRLAlgorithmBase):
                 # SELECT ACTION
                 rng, _rng = jax.random.split(rng)
                 y, updates = network.apply({'params': train_state.params,
-                                                  'run_stats': train_state.run_stats},
-                                                 last_obs, mutable=["run_stats"])
+                                            'run_stats': train_state.run_stats},
+                                           last_obs, mutable=["run_stats"])
                 pi, value = y
-                train_state = train_state.replace(run_stats=updates['run_stats'])   # update stats
+                train_state = train_state.replace(run_stats=updates['run_stats'])  # update stats
                 action = pi.sample(seed=_rng)
                 log_prob = pi.log_prob(action)
 
@@ -273,8 +274,8 @@ class GAILJax(JaxRLAlgorithmBase):
 
                     delta = reward + config.gamma * next_value * (1 - absorbing) - value
                     gae = (
-                        delta
-                        + config.gamma * config.gae_lambda * (1 - done) * gae
+                            delta
+                            + config.gamma * config.gae_lambda * (1 - done) * gae
                     )
                     return (gae, value), gae
 
@@ -303,12 +304,12 @@ class GAILJax(JaxRLAlgorithmBase):
 
                         # CALCULATE VALUE LOSS
                         value_pred_clipped = traj_batch.value + (
-                            value - traj_batch.value
+                                value - traj_batch.value
                         ).clip(-config.clip_eps, config.clip_eps)
                         value_losses = jnp.square(value - targets)
                         value_losses_clipped = jnp.square(value_pred_clipped - targets)
                         value_loss = (
-                            0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
+                                0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
                         )
 
                         # CALCULATE PPO ACTOR LOSS
@@ -328,9 +329,9 @@ class GAILJax(JaxRLAlgorithmBase):
                         entropy = pi.entropy().mean()
 
                         total_loss = (
-                            loss_actor
-                            + config.vf_coef * value_loss
-                            - config.ent_coef * entropy
+                                loss_actor
+                                + config.vf_coef * value_loss
+                                - config.ent_coef * entropy
                         )
                         return total_loss, (value_loss, loss_actor, entropy)
 
@@ -345,7 +346,7 @@ class GAILJax(JaxRLAlgorithmBase):
                 rng, _rng = jax.random.split(rng)
                 batch_size = config.minibatch_size * config.num_minibatches
                 assert (
-                    batch_size == config.num_steps * config.num_envs
+                        batch_size == config.num_steps * config.num_envs
                 ), "batch size must be equal to number of steps * number of envs"
                 permutation = jax.random.permutation(_rng, batch_size)
                 batch = (traj_batch, advantages, targets)
@@ -376,6 +377,7 @@ class GAILJax(JaxRLAlgorithmBase):
 
             def _update_discriminator(runner_state, unused):
                 disc_train_state, traj_batch, rng = runner_state
+
                 def _get_one_batch(data, batch_size, rng):
                     idx = jax.random.randint(rng, shape=(batch_size,), minval=0, maxval=data.shape[0])
                     return data[idx]
@@ -398,7 +400,6 @@ class GAILJax(JaxRLAlgorithmBase):
                     discrim_probs_exp = discrim_out[exp_idxs]
 
                     if config.debug:
-
                         def callback(discrim_probs_policy, discrim_probs_exp):
                             print(f"Policy Discriminator Output: {jnp.mean(discrim_probs_policy)}")
                             print(f"Expert Discriminator Output: {jnp.mean(discrim_probs_exp)}")
@@ -416,7 +417,7 @@ class GAILJax(JaxRLAlgorithmBase):
                 demo_input = _get_one_batch(expert_dataset.observations, batch_size, _rng2)
 
                 # Create labels
-                #plcy_target, demo_target = cls._get_discriminator_targets(plcy_input.shape[0], demo_input.shape[0])
+                # plcy_target, demo_target = cls._get_discriminator_targets(plcy_input.shape[0], demo_input.shape[0])
                 plcy_target = jnp.zeros(shape=(plcy_input.shape[0],))
                 demo_target = jnp.ones(shape=(demo_input.shape[0],))
 
@@ -426,7 +427,7 @@ class GAILJax(JaxRLAlgorithmBase):
 
                 # update discriminator
                 grad_fn = jax.value_and_grad(_discrim_loss, has_aux=True)
-                (total_loss, (disc_train_state, discrim_probs_policy, discrim_probs_exp)), grads =\
+                (total_loss, (disc_train_state, discrim_probs_policy, discrim_probs_exp)), grads = \
                     grad_fn(disc_train_state.params, disc_train_state, inputs, targets)
 
                 # apply discriminator gradients

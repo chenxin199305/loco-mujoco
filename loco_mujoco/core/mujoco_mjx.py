@@ -103,8 +103,7 @@ class Mjx(Mujoco):
         done = jnp.array(False, dtype=bool)
         info = self._mjx_reset_info_dictionary(obs, data, subkey)
 
-        return MjxState(data=data, observation=obs, reward=reward, absorbing=absorbing, done=done,
-                        info=info, additional_carry=carry)
+        return MjxState(data=data, observation=obs, reward=reward, absorbing=absorbing, done=done, info=info, additional_carry=carry)
 
     def _mjx_reset_in_step(self, state: MjxState) -> MjxState:
         """
@@ -167,7 +166,6 @@ class Mjx(Mujoco):
         sys, data, carry = self._mjx_simulation_pre_step(self.sys, data, carry)
 
         def _inner_loop(idx, _runner_state):
-
             _data, _carry = _runner_state
 
             ctrl_action, _carry = self._mjx_compute_action(processed_action, self._model, _data, _carry)
@@ -583,4 +581,3 @@ class Mjx(Mujoco):
     def mjx_env(self) -> bool:
         """Indicates whether this is an MJX environment."""
         return True
-

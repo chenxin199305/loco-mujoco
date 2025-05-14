@@ -36,7 +36,7 @@ class TrainState(train_state.TrainState):
 class TrainStateBuffer:
     train_states: TrainState
     n: int
-    size: int   # buffer size
+    size: int  # buffer size
 
     @classmethod
     def create(cls, train_state: TrainState, size: int):

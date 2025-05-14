@@ -2,9 +2,10 @@ import jax
 import jax.numpy as jnp
 import flax.linen as nn
 import numpy as np
+import distrax
+
 from flax.linen.initializers import constant, orthogonal
 from typing import Sequence
-import distrax
 
 
 def get_activation_fn(name: str):
@@ -17,11 +18,10 @@ def get_activation_fn(name: str):
 
 
 class FullyConnectedNet(nn.Module):
-
     hidden_layer_dims: Sequence[int]
     output_dim: int
     activation: str = "tanh"
-    output_activation: str = None    # none means linear activation
+    output_activation: str = None  # none means linear activation
     use_running_mean_stand: bool = True
     squeeze_output: bool = True
 
@@ -62,15 +62,13 @@ class ActorCritic(nn.Module):
 
     @nn.compact
     def __call__(self, x):
-
         x = RunningMeanStd()(x)
 
         # build actor
         actor_x = x if self.actor_obs_ind is None else x[..., self.actor_obs_ind]
-        actor_mean = FullyConnectedNet(self.hidden_layer_dims, self.action_dim, self.activation,
-                                       None, False, False)(actor_x)
-        actor_logtstd = self.param("log_std", nn.initializers.constant(jnp.log(self.init_std)),
-                                   (self.action_dim,))
+        actor_mean = FullyConnectedNet(self.hidden_layer_dims, self.action_dim, self.activation, None, False, False)(actor_x)
+        actor_logtstd = self.param("log_std", nn.initializers.constant(jnp.log(self.init_std)), (self.action_dim,))
+
         if not self.learnable_std:
             actor_logtstd = jax.lax.stop_gradient(actor_logtstd)
 
@@ -88,7 +86,6 @@ class RunningMeanStd(nn.Module):
 
     @nn.compact
     def __call__(self, x):
-
         x = jnp.atleast_2d(x)
 
         # Initialize running mean, variance, and count
@@ -111,6 +108,7 @@ class RunningMeanStd(nn.Module):
         # Compute the new variance using Welford's method
         m_a = var.value * count.value
         m_b = batch_var * batch_count
+
         M2 = m_a + m_b + jnp.square(delta) * count.value * batch_count / updated_count
         new_var = M2 / updated_count
 

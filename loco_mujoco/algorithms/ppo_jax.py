@@ -32,17 +32,24 @@ class PPOAgentConf(AgentConfBase):
             Serialized agent configuration as a dictionary.
 
         """
-        conf_dict = OmegaConf.to_container(self.config, resolve=True, throw_on_missing=True)
+        config_dict = OmegaConf.to_container(self.config, resolve=True, throw_on_missing=True)
         serialized_network = flax.serialization.to_state_dict(self.network)
-        return {"config": conf_dict, "network": serialized_network}
+
+        return {
+            "config": config_dict,
+            "network": serialized_network,
+        }
 
     @classmethod
     def from_dict(cls, d):
         config = OmegaConf.create(d["config"])
         tx = PPOJax._get_optimizer(config)
-        return cls(config=config,
-                   network=flax.serialization.from_state_dict(ActorCritic, d["network"]),
-                   tx=tx)
+
+        return cls(
+            config=config,
+            network=flax.serialization.from_state_dict(ActorCritic, d["network"]),
+            tx=tx,
+        )
 
 
 @struct.dataclass
@@ -149,11 +156,9 @@ class PPOJax(JaxRLAlgorithmBase):
             train_state = None
 
         if train_state is None:
-
             rng, _rng1, _rng2 = jax.random.split(rng, 3)
             init_x = jnp.zeros(env.info.observation_space.shape)
             network_params = network.init(_rng1, init_x)
-
         else:
             raise NotImplementedError("Loading of train state not implemented yet.")
 
@@ -174,6 +179,7 @@ class PPOJax(JaxRLAlgorithmBase):
 
         # TRAIN LOOP
         def _update_step(runner_state, unused):
+
             # COLLECT TRAJECTORIES
             def _env_step(runner_state, unused):
                 train_state, env_state, last_obs, train_state_buffer, rng = runner_state
@@ -301,29 +307,37 @@ class PPOJax(JaxRLAlgorithmBase):
                         batch_size == config.num_steps * config.num_envs
                 ), "batch size must be equal to number of steps * number of envs"
                 permutation = jax.random.permutation(_rng, batch_size)
+
                 batch = (traj_batch, advantages, targets)
                 batch = jax.tree.map(
-                    lambda x: x.reshape((batch_size,) + x.shape[2:]), batch
+                    lambda x: x.reshape(
+                        (batch_size,) + x.shape[2:]
+                    ), batch
                 )
                 shuffled_batch = jax.tree.map(
-                    lambda x: jnp.take(x, permutation, axis=0), batch
+                    lambda x: jnp.take(
+                        x, permutation, axis=0)
+                    , batch
                 )
                 minibatches = jax.tree.map(
                     lambda x: jnp.reshape(
                         x, [config.num_minibatches, -1] + list(x.shape[1:])
-                    ),
-                    shuffled_batch,
+                    ), shuffled_batch,
                 )
                 train_state, total_loss = jax.lax.scan(
                     _update_minbatch, train_state, minibatches
                 )
                 update_state = (train_state, traj_batch, advantages, targets, rng)
+
                 return update_state, total_loss
 
-            update_state = (train_state, traj_batch, advantages, targets, rng)
+            update_state = (
+                train_state, traj_batch, advantages, targets, rng
+            )
             update_state, loss_info = jax.lax.scan(
                 _update_epoch, update_state, None, config.update_epochs
             )
+
             train_state = update_state[0]
             rng = update_state[-1]
 
@@ -332,8 +346,12 @@ class PPOJax(JaxRLAlgorithmBase):
             logged_metrics = traj_batch.metrics
 
             metric = SummaryMetrics(
-                mean_episode_return=jnp.sum(jnp.where(logged_metrics.done, logged_metrics.returned_episode_returns, 0.0)) / jnp.sum(logged_metrics.done),
-                mean_episode_length=jnp.sum(jnp.where(logged_metrics.done, logged_metrics.returned_episode_lengths, 0.0)) / jnp.sum(logged_metrics.done),
+                mean_episode_return=jnp.sum(jnp.where(logged_metrics.done,
+                                                      logged_metrics.returned_episode_returns, 0.0))
+                                    / jnp.sum(logged_metrics.done),
+                mean_episode_length=jnp.sum(jnp.where(logged_metrics.done,
+                                                      logged_metrics.returned_episode_lengths, 0.0))
+                                    / jnp.sum(logged_metrics.done),
                 max_timestep=jnp.max(logged_metrics.timestep * config.num_envs),
             )
 
@@ -416,17 +434,24 @@ class PPOJax(JaxRLAlgorithmBase):
                 "validation_metrics": metrics[1]}
 
     @classmethod
-    def play_policy(cls, env,
+    def play_policy(cls,
+                    env,
                     agent_conf: PPOAgentConf,
                     agent_state: PPOAgentState,
-                    n_envs: int, n_steps=None, render=True,
-                    record=False, rng=None, deterministic=False,
-                    use_mujoco=False, wrap_env=True,
+                    n_envs: int,
+                    n_steps=None,
+                    render=True,
+                    record=False,
+                    rng=None,
+                    deterministic=False,
+                    use_mujoco=False,
+                    wrap_env=True,
                     train_state_seed=None):
 
         if use_mujoco and wrap_env:
             if hasattr(agent_conf.experiment, "len_obs_history"):
                 assert agent_conf.experiment.len_obs_history == 1, "len_obs_history must be 1 for mujoco envs."
+
         if use_mujoco:
             assert n_envs == 1, "Only one mujoco env can be run at a time."
 
@@ -446,8 +471,8 @@ class PPOJax(JaxRLAlgorithmBase):
             train_state.params["log_std"] = np.ones_like(train_state.params["log_std"]) * -np.inf
 
         if config.n_seeds > 1:
-            assert train_state_seed is not None, ("Loaded train state has multiple seeds. Please specify "
-                                                  "train_state_seed for replay.")
+            assert train_state_seed is not None, ("Loaded train state has multiple seeds. "
+                                                  "Please specify train_state_seed for replay.")
 
             # take the seed queried for evaluation
             train_state = jax.tree.map(lambda x: x[train_state_seed], train_state)
@@ -504,23 +529,40 @@ class PPOJax(JaxRLAlgorithmBase):
         env.stop()
 
     @classmethod
-    def play_policy_mujoco(cls, env,
+    def play_policy_mujoco(cls,
+                           env,
                            agent_conf: PPOAgentConf,
                            agent_state: PPOAgentState,
-                           n_steps=None, render=True,
-                           record=False, rng=None, deterministic=False,
+                           n_steps=None,
+                           render=True,
+                           record=False,
+                           rng=None,
+                           deterministic=False,
                            train_state_seed=None):
 
-        cls.play_policy(env, agent_conf, agent_state, 1, n_steps, render, record, rng, deterministic,
-                        True, False, train_state_seed)
+        cls.play_policy(env,
+                        agent_conf,
+                        agent_state,
+                        n_envs=1,
+                        n_steps=n_steps,
+                        render=render,
+                        record=record,
+                        rng=rng,
+                        deterministic=deterministic,
+                        use_mujoco=True,
+                        wrap_env=False,
+                        train_state_seed=train_state_seed)
 
     @staticmethod
     def _wrap_env(env, config):
 
         if "len_obs_history" in config and config.len_obs_history > 1:
             env = NStepWrapper(env, config.len_obs_history)
+
         env = LogWrapper(env)
         env = VecEnv(env)
+
         if config.normalize_env:
             env = NormalizeVecReward(env, config.gamma)
+
         return env
