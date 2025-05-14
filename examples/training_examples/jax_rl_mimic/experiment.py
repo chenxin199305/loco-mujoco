@@ -1,8 +1,10 @@
 import os
 import sys
+import time
 import jax
 import jax.numpy as jnp
 import wandb
+
 from dataclasses import fields
 from loco_mujoco import TaskFactory
 from loco_mujoco.algorithms import PPOJax
@@ -10,20 +12,30 @@ from loco_mujoco.utils.metrics import QuantityContainer
 from loco_mujoco.utils import MetricsHandler
 
 import hydra
+import traceback
+
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
-import traceback
 
 
 @hydra.main(version_base=None, config_path="./", config_name="conf")
 def experiment(config: DictConfig):
-    try:
+    print(
+        f"Running experiment with config:\n{OmegaConf.to_yaml(config)}"
+    )
 
-        os.environ['XLA_FLAGS'] = (
-            '--xla_gpu_triton_gemm_any=True ')
+    try:
+        # This appears to refer to a
+        # GPU-accelerated matrix multiplication (GEMM) operation in XLA (Accelerated Linear Algebra)
+        # that uses Triton as the backend for any (potentially irregular) matrix sizes.
+        os.environ['XLA_FLAGS'] = ('--xla_gpu_triton_gemm_any=True ')
 
         # Accessing the current sweep number
         result_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+
+        print(
+            f"Saving results to {result_dir}"
+        )
 
         # setup wandb
         wandb.login()
@@ -34,7 +46,10 @@ def experiment(config: DictConfig):
         factory = TaskFactory.get_factory_cls(config.experiment.task_factory.name)
 
         # create env
+        print(f"Creating environment started at {(t_start := time.time())}")
         env = factory.make(**config.experiment.env_params, **config.experiment.task_factory.params)
+        print(f"Creating environment stopped at {(t_stop := time.time())}")
+        print(f"Time taken to create environment: {t_stop - t_start}s")
 
         # get initial agent configuration
         agent_conf = PPOJax.init_agent_conf(env, config)
@@ -43,23 +58,32 @@ def experiment(config: DictConfig):
         mh = MetricsHandler(config, env) if config.experiment.validation.active else None
 
         # build training function
+        print(f"Building training function started at {(t_start := time.time())}")
         train_fn = PPOJax.build_train_fn(env, agent_conf, mh=mh)
+        print(f"Building training function stopped at {(t_stop := time.time())}")
+        print(f"Time taken to build training function: {t_stop - t_start}s")
 
         # jit and vmap training function
+        print(f"Jitting and vmapping training function started at {(t_start := time.time())}")
         train_fn = jax.jit(jax.vmap(train_fn)) if config.experiment.n_seeds > 1 else jax.jit(train_fn)
+        print(f"Jitting and vmapping training function stopped at {(t_stop := time.time())}")
+        print(f"Time taken to jit and vmap training function: {t_stop - t_start}s")
 
         # get rng keys and run training
-        rngs = [jax.random.PRNGKey(i) for i in range(config.experiment.n_seeds+1)]  # create rngs from seed
+        print(f"Training function started at {(t_start := time.time())}")
+        rngs = [jax.random.PRNGKey(i) for i in range(config.experiment.n_seeds + 1)]  # create rngs from seed
         rng, _rng = rngs[0], jnp.squeeze(jnp.vstack(rngs[1:]))
         out = train_fn(_rng)
+        print(f"Training function stopped at {(t_stop := time.time())}")
+        print(f"Time taken to run training function: {t_stop - t_start}s")
 
         # save agent state
         agent_state = out["agent_state"]
         save_path = PPOJax.save_agent(result_dir, agent_conf, agent_state)
         run.config.update({"agent_save_path": save_path})
 
-        import time
         t_start = time.time()
+
         # get the metrics and log them
         if not config.experiment.debug:
             training_metrics = out["training_metrics"]
@@ -70,14 +94,22 @@ def experiment(config: DictConfig):
             validation_metrics = jax.tree.map(lambda x: jnp.mean(jnp.atleast_2d(x), axis=0), validation_metrics)
 
             for i in range(len(training_metrics.mean_episode_return)):
-                run.log({"Mean Episode Return": training_metrics.mean_episode_return[i],
-                         "Mean Episode Length": training_metrics.mean_episode_length[i]},
-                        step=int(training_metrics.max_timestep[i]))
+                run.log(
+                    {
+                        "Mean Episode Return": training_metrics.mean_episode_return[i],
+                        "Mean Episode Length": training_metrics.mean_episode_length[i],
+                    },
+                    step=int(training_metrics.max_timestep[i])
+                )
 
-                if (i+1) % config.experiment.validation_interval == 0 and config.experiment.validation.active:
-                    run.log({"Validation Info/Mean Episode Return": validation_metrics.mean_episode_return[i],
-                             "Validation Info/Mean Episode Length": validation_metrics.mean_episode_length[i]},
-                            step=int(training_metrics.max_timestep[i]))
+                if (i + 1) % config.experiment.validation_interval == 0 and config.experiment.validation.active:
+                    run.log(
+                        {
+                            "Validation Info/Mean Episode Return": validation_metrics.mean_episode_return[i],
+                            "Validation Info/Mean Episode Length": validation_metrics.mean_episode_length[i],
+                        },
+                        step=int(training_metrics.max_timestep[i])
+                    )
 
                     # log all measures
                     metrics_to_log = {}
@@ -97,16 +129,32 @@ def experiment(config: DictConfig):
                     site_rpos = validation_metrics.euclidean_distance.site_rpos[i]
                     site_rrotvec = validation_metrics.euclidean_distance.site_rpos[i]
                     site_rvel = validation_metrics.euclidean_distance.site_rpos[i]
-                    run.log({"Metric for Sweep": site_rpos + site_rrotvec + site_rvel},
-                            step=int(training_metrics.max_timestep[i]))
+                    run.log(
+                        {
+                            "Metric for Sweep": site_rpos + site_rrotvec + site_rvel,
+                        },
+                        step=int(training_metrics.max_timestep[i])
+                    )
 
-        print(f"Time taken to log metrics: {time.time() - t_start}s")
+        t_stop = time.time()
+
+        print(f"Time taken to log metrics: {t_stop - t_start}s")
 
         # run the environment with the trained agent to record video
-        PPOJax.play_policy(env, agent_conf, agent_state, deterministic=True, n_steps=200, n_envs=20, record=True,
+        PPOJax.play_policy(env,
+                           agent_conf,
+                           agent_state,
+                           deterministic=True,
+                           n_steps=200,
+                           n_envs=20,
+                           record=True,
                            train_state_seed=0)
         video_file = env.video_file_path
-        run.log({"Agent Video": wandb.Video(video_file)})
+        run.log(
+            {
+                "Agent Video": wandb.Video(video_file)
+            }
+        )
 
         wandb.finish()
 

@@ -3,8 +3,6 @@ import sys
 import time
 import jax
 import jax.numpy as jnp
-from scipy.stats import tmean
-
 import wandb
 
 from dataclasses import fields
@@ -21,40 +19,9 @@ from omegaconf import DictConfig, OmegaConf
 
 @hydra.main(version_base=None, config_path="./", config_name="conf")
 def experiment(config: DictConfig):
-    """
-    Runs a machine learning experiment according to the specified configuration.
-
-    This function leverages Hydra for dynamic configuration, uses Weights & Biases
-    (Wandb) for experiment tracking and logging, and JAX for high-performance
-    machine learning tasks. The experiment involves creating an environment,
-    initializing an agent configuration, building and compiling a training
-    function, training the agent, logging training and validation metrics, and
-    recording a video of the trained agent's performance.
-
-    It supports multiple random seeds for reproducibility and allows jit
-    compilation and vectorized mapping (`vmap`) of the training function based
-    on the configured number of seeds.
-
-    It saves the trained agent's state for reuse and logs metrics and results
-    to Wandb. Additionally, the function handles Triton-based GPU computations
-    for enhanced performance.
-
-    Arguments:
-        config (DictConfig): A configuration object as defined by Hydra and OmegaConf
-            specifying experiment parameters, environment details, agent
-            configuration, logging settings, and training options.
-
-    Raises:
-        Exception: Captures and re-raises any exception that occurs during the
-            experiment setup, execution, or logging, with detailed traceback
-            information displayed in standard error.
-    """
-
     print(
         f"Running experiment with config:\n{OmegaConf.to_yaml(config)}"
     )
-
-    time.time()
 
     try:
         # This appears to refer to a
@@ -170,7 +137,14 @@ def experiment(config: DictConfig):
         print(f"Time taken to log metrics: {t_stop - t_start}s")
 
         # run the environment with the trained agent to record video
-        PPOJax.play_policy(env, agent_conf, agent_state, deterministic=True, n_steps=200, n_envs=20, record=True, train_state_seed=0)
+        PPOJax.play_policy(env,
+                           agent_conf,
+                           agent_state,
+                           deterministic=True,
+                           n_steps=200,
+                           n_envs=20,
+                           record=True,
+                           train_state_seed=0)
         video_file = env.video_file_path
         run.log(
             {
