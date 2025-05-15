@@ -148,6 +148,17 @@ year={2023}
 }
 ```
 
+---
+
+## Known Issues
+
+### FileNotFoundError: [Errno 2] No such file or directory: 'ffmpeg'
+This error occurs when you try to record a video of the environment. You can install ffmpeg with the following command:
+
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
 
 
 

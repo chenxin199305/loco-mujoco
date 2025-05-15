@@ -61,6 +61,7 @@ class TargetXVelocityReward(Reward):
     target velocity in the x-direction.
 
     """
+
     def __init__(self, env: Any, target_velocity: float, **kwargs):
         """
         Initialize the reward function.
@@ -119,8 +120,13 @@ class TargetVelocityGoalReward(Reward):
 
     """
 
-    def __init__(self, env: Any, tracking_w_exp_xy=10.0, tracking_w_exp_yaw=10.0,
-                 tracking_w_sum_xy=1.0, tracking_w_sum_yaw=1.0, **kwargs):
+    def __init__(self,
+                 env: Any,
+                 tracking_w_exp_xy=10.0,
+                 tracking_w_exp_yaw=10.0,
+                 tracking_w_sum_xy=1.0,
+                 tracking_w_sum_yaw=1.0,
+                 **kwargs):
         """
         Initialize the reward function.
 
@@ -189,14 +195,14 @@ class TargetVelocityGoalReward(Reward):
 
         assert root_jnt_id != -1, f"Joint {self._free_jnt_name} not found in the model."
         root_jnt_qpos_start_id = model.jnt_qposadr[root_jnt_id]
-        root_qpos = backend.squeeze(data.qpos[root_jnt_qpos_start_id:root_jnt_qpos_start_id+7])
+        root_qpos = backend.squeeze(data.qpos[root_jnt_qpos_start_id:root_jnt_qpos_start_id + 7])
         root_quat = R.from_quat(quat_scalarfirst2scalarlast(root_qpos[3:7]))
 
         # get current local vel of root
         lin_vel_global = backend.squeeze(data.qvel[self._vel_idx])[:3]
         ang_vel_global = backend.squeeze(data.qvel[self._vel_idx])[3:]
         lin_vel_local = root_quat.as_matrix().T @ lin_vel_global
-        vel_local = backend.concatenate([lin_vel_local[:2], backend.atleast_1d(ang_vel_global[2])]) # construct vel, x, y and yaw
+        vel_local = backend.concatenate([lin_vel_local[:2], backend.atleast_1d(ang_vel_global[2])])  # construct vel, x, y and yaw
 
         # calculate tracking reward
         goal_vel = backend.array([goal_state.goal_vel_x, goal_state.goal_vel_y, goal_state.goal_vel_yaw])
@@ -218,7 +224,6 @@ class LocomotionRewardState:
 
 
 class LocomotionReward(TargetVelocityGoalReward):
-
     """
     Reward function extending the TargetVelocityGoalReward with typical additional penalties
     and regularization terms for locomotion. This reward is stateful: LocomotionRewardState
@@ -456,9 +461,10 @@ class LocomotionReward(TargetVelocityGoalReward):
                     else:
                         tslt[i] += env.dt
                 else:
-                    tslt_i, air_time_reward = jax.lax.cond(foot_on_ground,
-                                                           lambda: (0.0, air_time_reward + tslt[i] - self._air_time_max),
-                                                           lambda: (tslt[i] + env.dt, air_time_reward))
+                    tslt_i, air_time_reward = jax.lax.cond(
+                        foot_on_ground,
+                        lambda: (0.0, air_time_reward + tslt[i] - self._air_time_max),
+                        lambda: (tslt[i] + env.dt, air_time_reward))
                     tslt = tslt.at[i].set(tslt_i)
 
             air_time_reward = self._air_time_coeff * air_time_reward
@@ -497,12 +503,29 @@ class LocomotionReward(TargetVelocityGoalReward):
             energy_reward = 0.0
 
         # total reward
-        tracking_reward, _ = super().__call__(state, action, next_state, absorbing, info,
-                                              env, model, data, carry, backend)
-        penality_rewards = (z_vel_reward + roll_pitch_vel_reward + roll_pitch_reward + joint_qpos_reward
-                            + joint_position_limit_reward + joint_vel_reward + acceleration_reward
-                            + torque_reward + action_rate_reward + air_time_reward
-                            + symmetry_air_reward + energy_reward)
+        tracking_reward, _ = super().__call__(state,
+                                              action,
+                                              next_state,
+                                              absorbing,
+                                              info,
+                                              env,
+                                              model,
+                                              data,
+                                              carry,
+                                              backend)
+
+        penality_rewards = (z_vel_reward
+                            + roll_pitch_vel_reward
+                            + roll_pitch_reward
+                            + joint_qpos_reward
+                            + joint_position_limit_reward
+                            + joint_vel_reward
+                            + acceleration_reward
+                            + torque_reward
+                            + action_rate_reward
+                            + air_time_reward
+                            + symmetry_air_reward
+                            + energy_reward)
         total_reward = tracking_reward + penality_rewards
         total_reward = backend.maximum(total_reward, 0.0)
 
