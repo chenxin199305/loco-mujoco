@@ -11,13 +11,12 @@ class AMPJax(GAILJax):
                                          'run_stats': disc_train_state.run_stats},
                                         obs, mutable=["run_stats"])
 
-        reward = jnp.maximum(0.0, 1 - 0.25*jnp.square(logits - 1))
+        reward = jnp.maximum(0.0, 1 - 0.25 * jnp.square(logits - 1))
 
         return reward
 
     @classmethod
     def _discriminator_loss(cls, config, logits, targets):
-
         # least squares loss
         total_loss = jnp.mean(jnp.square(logits - targets))
 

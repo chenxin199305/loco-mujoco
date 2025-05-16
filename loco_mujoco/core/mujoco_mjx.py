@@ -69,6 +69,7 @@ class Mjx(Mujoco):
         # setup mjx model and data
         mujoco.mj_resetData(self._model, self._data)
         mujoco.mj_forward(self._model, self._data)
+
         self.sys = mjx.put_model(self._model)
         data = mjx.put_data(self._model, self._data)
         self._first_data = mjx.forward(self.sys, data)

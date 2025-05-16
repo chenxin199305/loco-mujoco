@@ -1,7 +1,6 @@
 import numpy as np
 from loco_mujoco.task_factories import ImitationFactory, LAFAN1DatasetConf, DefaultDatasetConf, AMASSDatasetConf
 
-
 # # example --> you can add as many datasets as you want in the lists!
 env = ImitationFactory.make("UnitreeH1",
                             default_dataset_conf=DefaultDatasetConf(["squat", "walk"]),
@@ -14,5 +13,3 @@ env = ImitationFactory.make("UnitreeH1",
                             n_substeps=20)
 
 env.play_trajectory(n_episodes=3, n_steps_per_episode=500, render=True)
-
-

@@ -1,18 +1,17 @@
 import numpy as np
 from loco_mujoco import ImitationFactory
 
-
 # create the environment and task
 env = ImitationFactory.make("FourierGR1T2", default_dataset_conf=dict(task="stepinplace1"))
 
 # get the dataset for the chosen environment and task -- can be used for GAIL-like algorithms
-#expert_data = env.create_dataset()
+# expert_data = env.create_dataset()
 
 action_dim = env.info.action_space.shape[0]
 
 env.reset()
-
 env.render()
+
 absorbing = False
 i = 0
 
