@@ -1,7 +1,8 @@
 import numpy as np
+import gymnasium as gym
+
 import loco_mujoco
 from loco_mujoco.task_factories import DefaultDatasetConf, LAFAN1DatasetConf
-import gymnasium as gym
 
 # Create the Gymnasium environment
 env = gym.make(
