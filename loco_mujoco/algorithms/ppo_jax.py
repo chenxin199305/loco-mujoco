@@ -121,14 +121,18 @@ class PPOJax(JaxRLAlgorithmBase):
             tx = optax.chain(
                 optax.clip_by_global_norm(config.experiment.max_grad_norm),
                 optax.adamw(weight_decay=config.experiment.weight_decay, eps=1e-5,
-                            learning_rate=lambda count: cls._linear_lr_schedule(count, config.experiment.num_minibatches,
-                                                                                config.experiment.update_epochs, config.lr,
+                            learning_rate=lambda count: cls._linear_lr_schedule(count,
+                                                                                config.experiment.num_minibatches,
+                                                                                config.experiment.update_epochs,
+                                                                                config.lr,
                                                                                 config.experiment.num_updates))
             )
         else:
             tx = optax.chain(
                 optax.clip_by_global_norm(config.experiment.max_grad_norm),
-                optax.adamw(config.experiment.lr, weight_decay=config.experiment.weight_decay, eps=1e-5),
+                optax.adamw(config.experiment.lr,
+                            weight_decay=config.experiment.weight_decay,
+                            eps=1e-5),
             )
 
         tx = optax.apply_if_finite(tx, max_consecutive_errors=10000000)
