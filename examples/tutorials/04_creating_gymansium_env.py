@@ -1,4 +1,11 @@
 import numpy as np
+
+"""
+Gymnasium 是一个项目，为所有单智能体强化学习环境提供 API（应用程序编程接口），
+并实现了常见环境：cartpole、pendulum、mountain-car、mujoco、atari 等。
+本页将概述如何使用 Gymnasium 的基础知识，
+包括其四个关键功能：make()、Env.reset()、Env.step() 和 Env.render()。
+"""
 import gymnasium as gym
 
 import loco_mujoco
@@ -24,6 +31,7 @@ seed = 1
 # Reset the environment and initialize variables
 env.reset()
 img = env.render()
+
 absorbing = False
 i = 0
 
