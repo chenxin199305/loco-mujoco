@@ -61,6 +61,7 @@ class CustomInitialStateHandler(InitialStateHandler):
 class CustomControlFunctionState(PDControlState):
     moving_average: Union[np.ndarray, jnp.ndarray]
 
+
 class CustomControlFunction(PDControl):
     def generate_action(self, env, action, model, data, carry, backend):
         orig_action, carry = super().generate_action(env, action, model, data, carry, backend)
@@ -125,6 +126,7 @@ class CustomBodyCOMPos(Observation):
 class CustomBodyCOMPosMovingAverageState:
     moving_average: Union[np.ndarray, jnp.ndarray]
 
+
 class CustomBodyCOMPosMovingAverage(StatefulObservation):
     dim = 3
 
@@ -159,7 +161,6 @@ CustomReward.register()
 CustomTerminalStateHandler.register()
 CustomBodyCOMPos.register()
 CustomBodyCOMPosMovingAverage.register()
-
 
 # ----- ENVIRONMENT SETUP -----
 observation_spec = [
